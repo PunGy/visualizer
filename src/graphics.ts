@@ -1,4 +1,9 @@
 
+interface TextOptions {
+  position?: 'default' | 'center',
+  debug?: boolean;
+}
+
 export class Graphics {
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
@@ -34,32 +39,64 @@ export class Graphics {
 
   s = (px: number) => px * this.scale
 
-  drawCircle(_x: number, _y: number, text: string) {
+  circle(x: number, y: number, text: string): void;
+  circle(x: number, y: number, radius: number): void;
+  circle(x: number, y: number, textOrRadius: string | number) {
     const { s, ctx } = this
-    const [x, y] = [s(_x), s(_y)]
+    const [_x, _y] = [s(x), s(y)]
 
-    const textMetrics= ctx.measureText(text)
-    // const textSize = text.length * this.fontSize
-    const textSize = textMetrics.width
-
-    {
-      const r = textSize / 2
+    const withText = typeof textOrRadius === 'string'
+    let r = 0
+    if (withText) {
       const padding = s(10);
-      ctx.beginPath()
-      ctx.arc(x, y, r + padding, 0, 2 * Math.PI)
-      ctx.stroke()
+      r = ctx.measureText(textOrRadius).width / 2 + padding
+    } else {
+      r = textOrRadius
+    }
+    ctx.beginPath()
+    ctx.arc(_x, _y, r, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    if (withText) {
+      this.text(x, y, textOrRadius, { position: 'center' })
+    }
+  }
+
+
+  text(x: number, y: number, text: string, { position = 'default', debug = false }: TextOptions) {
+    const { s, ctx } = this
+
+    const textMetrics = ctx.measureText(text)
+    const { width, actualBoundingBoxAscent: height } = textMetrics
+    let [_x, _y] = [s(x), s(y)]
+  
+    if (position === 'center') {
+      _x = _x - width / 2
+      _y = _y + height / 2
     }
 
-    {
-      const xm = x - textSize / 2
+    ctx.fillText(text, _x, _y)
 
-      ctx.fillText(text, xm, y + this.fontSize / 2)
-      // ctx.fillStyle = 'red'
-      // ctx.fillRect(x, y - this.fontSize * 1.5, 4, this.fontSize * 3)
-      // ctx.fillStyle = 'green'
-      // ctx.fillRect(x - textSize / 2, y - this.fontSize * 1.5, 4, this.fontSize * 3)
-      // ctx.fillStyle = 'blue'
-      // ctx.fillRect(x + textSize, y - this.fontSize * 1.5, 4, this.fontSize * 3)
+    if (debug) {
+      const strokeWidth = s(2)
+      ctx.fillStyle = 'green' // upper bound
+      ctx.fillRect(_x, _y - height, width, strokeWidth)
+      ctx.fillStyle = 'red' // bottom bound
+      ctx.fillRect(_x, _y, width, strokeWidth)
+      ctx.fillStyle = 'blue' // left bound
+      ctx.fillRect(_x, _y - height, strokeWidth, height + strokeWidth)
+      ctx.fillStyle = 'purple' // right bound
+      ctx.fillRect(_x + width, _y - height, strokeWidth, height + strokeWidth)
+      ctx.fillStyle = 'gray' // middle bound
+      ctx.fillRect(_x + width / 2, _y - height, strokeWidth, height + strokeWidth)
+
+      ctx.fillStyle = 'green' // drawing point
+      ctx.fillRect(_x, _y, strokeWidth, strokeWidth)
+
+      if (position === 'center') {
+        ctx.fillStyle = 'pink' // initial x and y
+        ctx.fillRect(s(x), s(y), strokeWidth, strokeWidth)
+      }
     }
   }
 }
